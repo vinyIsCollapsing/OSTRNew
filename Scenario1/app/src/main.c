@@ -3,8 +3,6 @@
  *
  */
 
-// TODO: terminar a parte 5 pulsos de led, captura de semaforo e sequencia de abcd
-
 #include "main.h"
 
 // #define SUBS_LEN 10

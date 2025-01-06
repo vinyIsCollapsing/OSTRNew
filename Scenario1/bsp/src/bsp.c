@@ -169,8 +169,15 @@ void BSP_Console_Init()
 	// With OVER8=1 and Fck=48MHz, USARTDIV = 2*48E6/115200 = 833.3333
 	// BRR = 833 -> Baud Rate = 115246.0984 -> 0.04% error (better)
 
-	USART2->CR1 |= USART_CR1_OVER8;
-	USART2->BRR = 833;
+	// USART2->CR1 |= USART_CR1_OVER8;
+	// USART2->BRR = 833;
+
+	// Baud Rate = 9600
+	// With OVER8=0 and Fck=48MHz, USARTDIV = 48E6/9600 = 5000
+	// BRR = 5000
+
+	USART2->CR1 &= ~USART_CR1_OVER8;
+	USART2->BRR = 5000;
 
 	// Enable both Transmitter and Receiver
 	USART2->CR1 |= USART_CR1_TE | USART_CR1_RE;
