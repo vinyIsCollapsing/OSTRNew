@@ -1,8 +1,6 @@
 /*
  * main.h
  *
- *  Created on: 4 nov. 2022
- *      Author: laure
  */
 
 #ifndef INC_MAIN_H_
@@ -23,6 +21,10 @@
 #include "queue.h"
 #include "event_groups.h"
 #include "stream_buffer.h"
+
+// Tasks headers
+#include "readTask.h"
+#include "writeTask.h"
 
 // Global functions
 int my_printf	(const char *format, ...);

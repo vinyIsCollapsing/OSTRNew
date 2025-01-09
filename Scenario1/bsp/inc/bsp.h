@@ -1,8 +1,6 @@
 /*
  * bsp.h
  *
- *  Created on: 4 nov. 2022
- *      Author: laure
  */
 
 #ifndef INC_BSP_H_

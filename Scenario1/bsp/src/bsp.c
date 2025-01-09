@@ -1,8 +1,6 @@
 /*
  * bsp.c
  *
- *  Created on: 4 nov. 2022
- *      Author: laure
  */
 
 
