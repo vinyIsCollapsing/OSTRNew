@@ -27,8 +27,10 @@ xTaskHandle vTaskPub_handle;
 
 // Kernel objects
 xSemaphoreHandle xSem;
-
 xQueueHandle xSubscribeQueue;
+xSemaphoreHandle ledMutex;
+xSemaphoreHandle sems[MAX_SEMAPHORE];
+
 
 typedef struct {
     uint8_t sem_id;        // Semaphore ID to use for publication
@@ -36,7 +38,7 @@ typedef struct {
     uint8_t sensor_state;  // Awaited sensor state
 } subscribe_message_t;
 
-uint8_t sensor_states[SENSOR_TABLE_SIZE] = {0};
+//uint8_t sensor_states[SENSOR_TABLE_SIZE] = {0};
 typedef uint8_t command_message_t[60];				// Define the command_message_t type as an array of xx char
 
 
@@ -46,11 +48,14 @@ static void print_subscription_table(subscribe_message_t *subs);
 
 BaseType_t subscribe(uint8_t sem_id, uint8_t sensor_id, uint8_t sensor_state);
 
+static void uartSensor(uint8_t *sensors);
+static void publish(subscribe_message_t *subs, uint8_t *sensors);
 
 
 // Main program
 int main() {
     uint32_t free_heap_size;
+    size_t i;
 
     // Configure system clock
     SystemClock_Config();
@@ -70,6 +75,12 @@ int main() {
     // Create semaphore
     xSem = xSemaphoreCreateBinary();
     vTraceSetSemaphoreName(xSem, "xSem");
+	ledMutex = xSemaphoreCreateMutex();
+
+	for(i = 0; i < MAX_SEMAPHORE; i++) {
+		sems[i] = xSemaphoreCreateBinary();
+	}
+
     //xSem2 = xSemaphoreCreateBinary();
     //vTraceSetSemaphoreName(xSem2, "xSem2");
 
@@ -108,8 +119,25 @@ int main() {
  */
 void vTask1(void *pvParameters) {
     while (1) {
-    	subscribe(1,1,1);
-    	vTaskDelay(5000 / portTICK_PERIOD_MS);
+    	subscribe(1,1,0);
+		xSemaphoreTake(sems[1], portMAX_DELAY);
+		xSemaphoreTake(ledMutex, portMAX_DELAY);
+		BSP_LED_On();
+		vTaskDelay(100 / portTICK_PERIOD_MS);
+		BSP_LED_Off();
+		xSemaphoreGive(ledMutex);
+
+		subscribe(1, 1, 1);
+		xSemaphoreTake(sems[1], portMAX_DELAY);
+		xSemaphoreTake(ledMutex, portMAX_DELAY);
+		BSP_LED_On();
+		vTaskDelay(100 / portTICK_PERIOD_MS);
+		BSP_LED_Off();
+		vTaskDelay(200 / portTICK_PERIOD_MS);
+		BSP_LED_On();
+		vTaskDelay(100 / portTICK_PERIOD_MS);
+		BSP_LED_Off();
+		xSemaphoreGive(ledMutex);
     }
 }
 
@@ -118,8 +146,26 @@ void vTask1(void *pvParameters) {
  */
 void vTask2(void *pvParameters) {
     while(1){
-    	subscribe(2,2,0);
-    	vTaskDelay(4000 / portTICK_PERIOD_MS);
+		subscribe(2, 2, 0);
+		xSemaphoreTake(sems[2], portMAX_DELAY);
+		xSemaphoreTake(ledMutex, portMAX_DELAY);
+		BSP_LED_On();
+		vTaskDelay(200 / portTICK_PERIOD_MS);
+		BSP_LED_Off();
+		xSemaphoreGive(ledMutex);
+
+		subscribe(2, 2, 1);
+		xSemaphoreTake(sems[2], portMAX_DELAY);
+		xSemaphoreTake(ledMutex, portMAX_DELAY);
+		BSP_LED_On();
+		vTaskDelay(200 / portTICK_PERIOD_MS);
+		BSP_LED_Off();
+		vTaskDelay(400 / portTICK_PERIOD_MS);
+		BSP_LED_On();
+		vTaskDelay(200 / portTICK_PERIOD_MS);
+		BSP_LED_Off();
+		xSemaphoreGive(ledMutex);
+
     }
 }
 
@@ -134,24 +180,37 @@ void vTask_Pub(void *pvParameters) {
 
     subscribe_message_t subscription_table[MAX_SUBSCRIBERS] = {0};
     subscribe_message_t msg;
+    uint8_t sensors[SENSOR_TABLE_SIZE];
+    size_t i;
+
     // char rx_byte;
 
     // Reseting the message
-    for(size_t i = 0; i < MAX_SUBSCRIBERS; i++) {
+    for(i = 0; i < MAX_SUBSCRIBERS; i++) {
     	subscription_table[i].sem_id = 0;
     	subscription_table[i].sensor_id = 0;
     	subscription_table[i].sensor_state = 0;
     }
 
-    while (1) {
-    	BSP_LED_Toggle();
+	for(i = 0; i < SENSOR_TABLE_SIZE; i++) {
+		sensors[i] = 0;
+	}
 
-    	if(xQueueReceive(xSubscribeQueue, &msg, portMAX_DELAY)){
+
+    while (1) {
+    	// BSP_LED_Toggle();
+
+    	if(xQueueReceive(xSubscribeQueue, &msg, 0)){
     		updateSubs(subscription_table, &msg);
     		print_subscription_table(subscription_table);
     	} else {
     		my_printf(".");
     	}
+
+    	uartSensor(sensors);
+
+		publish(subscription_table, sensors);
+
 
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
@@ -216,6 +275,64 @@ static void print_subscription_table(subscribe_message_t *subs) {
 void vApplicationMallocFailedHook() {
     while (1);
 }
+
+static void uartSensor(uint8_t *sensors)
+{
+	uint8_t rx;
+	size_t i;
+
+	if( (USART2->ISR & USART_ISR_RXNE) != USART_ISR_RXNE ) return;
+
+	rx = USART2->RDR;
+
+	switch(rx) {
+	case 'a':
+		sensors[1] = 0;
+		break;
+
+	case 'b':
+		sensors[1] = 1;
+		break;
+
+	case 'c':
+		sensors[2] = 0;
+		break;
+
+	case 'd':
+		sensors[2] = 1;
+		break;
+	}
+
+	my_printf("sensors = [ ");
+	for(i = 1; i <= SENSOR_TABLE_SIZE; i++) {
+		my_printf("%d ", sensors[i]);
+	}
+	my_printf("]\r\n");
+}
+
+static void publish(subscribe_message_t *subs, uint8_t *sensors) {
+	size_t i;
+	uint8_t sensor, sem;
+
+	for(i = 0; i < MAX_SUBSCRIBERS; i++) {
+		if(subs[i].sem_id == 0) continue;
+
+		sensor = subs[i].sensor_id;
+		sem = subs[i].sem_id;
+
+		if(sensors[sensor] == subs[i].sensor_state) continue;
+
+		xSemaphoreGive(sems[sem]);
+
+		my_printf("published\r\n");
+
+		subs[i].sem_id = 0;
+		subs[i].sensor_id = 0;
+		subs[i].sensor_state = 0;
+	}
+}
+
+
 
 /*
  * Configure the system clock for the Nucleo STM32F072RB board
