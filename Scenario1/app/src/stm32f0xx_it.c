@@ -105,22 +105,26 @@ void HardFault_Handler(void)
   * This function handles EXTI line 13 interrupt request.
   */
 
-extern xSemaphoreHandle xSem1, xSem2;
+extern xSemaphoreHandle xSem/*, xSem2*/;
 
 void EXTI4_15_IRQHandler() {
     portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
-    if ((EXTI->PR & EXTI_PR_PR13_Msk) != 0) {
+    //if ((EXTI->PR & EXTI_PR_PR13_Msk) != 0) {
         EXTI->PR = EXTI_PR_PR13;
-        xSemaphoreGiveFromISR(xSem1, &xHigherPriorityTaskWoken);
+        xSemaphoreGiveFromISR(xSem, &xHigherPriorityTaskWoken);
         portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
-    }
-
+    //}
+    /*
+     *
     if ((EXTI->PR & EXTI_PR_PR14_Msk) != 0) {
         EXTI->PR = EXTI_PR_PR14;
         xSemaphoreGiveFromISR(xSem2, &xHigherPriorityTaskWoken);
         portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
     }
+     *
+     */
+
 }
 
 

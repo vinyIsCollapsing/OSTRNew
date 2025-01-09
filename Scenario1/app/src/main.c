@@ -7,7 +7,9 @@
 
 // #define SUBS_LEN 10
 #define MAX_SUBSCRIBERS 4
+#define QUEUE_LENGTH 10
 #define SENSOR_TABLE_SIZE 2
+#define MAX_SEMAPHORE 10
 
 // Static functions
 static void SystemClock_Config(void);
@@ -24,8 +26,8 @@ xTaskHandle vTask2_handle;
 xTaskHandle vTaskPub_handle;
 
 // Kernel objects
-xSemaphoreHandle xSem1;
-xSemaphoreHandle xSem2;
+xSemaphoreHandle xSem;
+
 xQueueHandle xSubscribeQueue;
 
 typedef struct {
@@ -35,10 +37,16 @@ typedef struct {
 } subscribe_message_t;
 
 uint8_t sensor_states[SENSOR_TABLE_SIZE] = {0};
+typedef uint8_t command_message_t[60];				// Define the command_message_t type as an array of xx char
+
 
 // Using subscribe_message_t, so this needs to go after declaration
 static void updateSubs(subscribe_message_t *subs, subscribe_message_t *new_sub);
 static void print_subscription_table(subscribe_message_t *subs);
+
+BaseType_t subscribe(uint8_t sem_id, uint8_t sensor_id, uint8_t sensor_state);
+
+
 
 // Main program
 int main() {
@@ -56,11 +64,14 @@ int main() {
     // Start trace recording
     vTraceEnable(TRC_START);
 
+    // Create the subscription queue
+    xSubscribeQueue = xQueueCreate(QUEUE_LENGTH, sizeof(subscribe_message_t));
+
     // Create semaphore
-    xSem1 = xSemaphoreCreateBinary();
-    xSem2 = xSemaphoreCreateBinary();
-    vTraceSetSemaphoreName(xSem1, "xSem1");
-    vTraceSetSemaphoreName(xSem2, "xSem2");
+    xSem = xSemaphoreCreateBinary();
+    vTraceSetSemaphoreName(xSem, "xSem");
+    //xSem2 = xSemaphoreCreateBinary();
+    //vTraceSetSemaphoreName(xSem2, "xSem2");
 
     // Initialize push-button interrupt
     BSP_PB_Init();
@@ -71,9 +82,6 @@ int main() {
     // Report free heap size
     free_heap_size = xPortGetFreeHeapSize();
     my_printf("Free Heap Size is %d bytes\r\n", free_heap_size);
-
-    // Create the subscription queue
-    xSubscribeQueue = xQueueCreate(10, sizeof(subscribe_message_t)); // Holding 10 messages
 
     // Create tasks
     my_printf("Creating Tasks...");
@@ -99,65 +107,9 @@ int main() {
  * Task_1
  */
 void vTask1(void *pvParameters) {
-    typedef enum { SENSOR_INACTIVE, SENSOR_ACTIVE } sensor_state_t;
-    sensor_state_t state = SENSOR_INACTIVE;
-
-    subscribe_message_t msg;
-
-    msg.sem_id = 1;
-    msg.sensor_id = 1;
-    msg.sensor_state = 1;
-
     while (1) {
-        switch (state) {
-            case SENSOR_INACTIVE:
-                xQueueSendToBack(xSubscribeQueue, &msg, 0);
-                my_printf("Task_1: Subscribed to Sensor 1, waiting for state=1.\r\n");
-
-                if (xSemaphoreTake(xSem1, portMAX_DELAY) == pdTRUE) {
-                    my_printf("Task_1: Semaphore taken, Sensor 1 active.\r\n");
-
-                    // Realiza um flash curto
-                    BSP_LED_On();
-                    BSP_DELAY_ms(100);
-                    BSP_LED_Off();
-                    BSP_DELAY_ms(250);
-
-                    // Atualiza o estado e a assinatura
-                    state = SENSOR_ACTIVE;
-                    msg.sensor_state = 0; // Próximo estado esperado
-                }
-                break;
-
-            case SENSOR_ACTIVE:
-                // Envia a assinatura para o estado inativo
-                xQueueSendToBack(xSubscribeQueue, &msg, 0);
-                my_printf("Task_1: Subscribed to Sensor 1, waiting for state=0.\r\n");
-
-                // Aguarda o semáforo
-                if (xSemaphoreTake(xSem1, portMAX_DELAY) == pdTRUE) {
-                    my_printf("Task_1: Semaphore taken, Sensor 1 inactive.\r\n");
-
-                    // Realiza dois flashes curtos
-                    BSP_LED_On();
-                    BSP_DELAY_ms(100);
-                    BSP_LED_Off();
-                    BSP_DELAY_ms(250);
-                    BSP_LED_On();
-                    BSP_DELAY_ms(100);
-                    BSP_LED_Off();
-                    BSP_DELAY_ms(250);
-
-                    // Atualiza o estado e a assinatura
-                    state = SENSOR_INACTIVE;
-                    msg.sensor_state = 1; // Próximo estado esperado
-                }
-                break;
-
-            default:
-                state = SENSOR_INACTIVE;
-                break;
-        }
+    	subscribe(1,1,1);
+    	vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
 }
 
@@ -165,67 +117,9 @@ void vTask1(void *pvParameters) {
  * Task_2
  */
 void vTask2(void *pvParameters) {
-    typedef enum { SENSOR_INACTIVE, SENSOR_ACTIVE } sensor_state_t;
-    sensor_state_t state = SENSOR_INACTIVE;
-
-    subscribe_message_t msg;
-
-    msg.sem_id = 2;
-    msg.sensor_id = 2;
-    msg.sensor_state = 1;
-
-    while (1) {
-        switch (state) {
-            case SENSOR_INACTIVE:
-                // Envia a assinatura para o estado ativo
-                my_printf("Task_2: Subscribed to Sensor 2, waiting for state=1.\r\n");
-                xQueueSendToBack(xSubscribeQueue, &msg, 0);
-
-                // Aguarda o semáforo para o estado ativo
-                if (xSemaphoreTake(xSem2, portMAX_DELAY) == pdTRUE) {
-                    my_printf("Task_2: Semaphore taken, Sensor 2 active.\r\n");
-
-                    // Realiza um flash longo
-                    BSP_LED_On();
-                    BSP_DELAY_ms(500);
-                    BSP_LED_Off();
-                    BSP_DELAY_ms(500);
-
-                    // Atualiza o estado e a assinatura para o próximo ciclo
-                    state = SENSOR_ACTIVE;
-                    msg.sensor_state = 0; // Próximo estado esperado
-                }
-                break;
-
-            case SENSOR_ACTIVE:
-                // Envia a assinatura para o estado inativo
-                my_printf("Task_2: Subscribed to Sensor 2, waiting for state=0.\r\n");
-                xQueueSendToBack(xSubscribeQueue, &msg, 0);
-
-                // Aguarda o semáforo para o estado inativo
-                if (xSemaphoreTake(xSem2, portMAX_DELAY) == pdTRUE) {
-                    my_printf("Task_2: Semaphore taken, Sensor 2 inactive.\r\n");
-
-                    // Realiza dois flashes longos
-                    BSP_LED_On();
-                    BSP_DELAY_ms(500);
-                    BSP_LED_Off();
-                    BSP_DELAY_ms(500);
-                    BSP_LED_On();
-                    BSP_DELAY_ms(500);
-                    BSP_LED_Off();
-                    BSP_DELAY_ms(500);
-
-                    // Atualiza o estado e a assinatura para o próximo ciclo
-                    state = SENSOR_INACTIVE;
-                    msg.sensor_state = 1; // Próximo estado esperado
-                }
-                break;
-
-            default:
-                state = SENSOR_INACTIVE;
-                break;
-        }
+    while(1){
+    	subscribe(2,2,0);
+    	vTaskDelay(4000 / portTICK_PERIOD_MS);
     }
 }
 
@@ -240,72 +134,48 @@ void vTask_Pub(void *pvParameters) {
 
     subscribe_message_t subscription_table[MAX_SUBSCRIBERS] = {0};
     subscribe_message_t msg;
-    char rx_byte;
+    // char rx_byte;
+
+    // Reseting the message
+    for(size_t i = 0; i < MAX_SUBSCRIBERS; i++) {
+    	subscription_table[i].sem_id = 0;
+    	subscription_table[i].sensor_id = 0;
+    	subscription_table[i].sensor_state = 0;
+    }
 
     while (1) {
-        // Process subscription queue
-        if (xQueueReceive(xSubscribeQueue, &msg, 0)) {
-            BSP_LED_Toggle(); // Toggle LED when a subscription is received
-            my_printf("Subscribing : SemID=%d SensID=%d State=%d\r\n", msg.sem_id, msg.sensor_id, msg.sensor_state);
-            updateSubs(subscription_table, &msg);
-        }
+    	BSP_LED_Toggle();
 
-        // Print the subscription table for debugging
-        print_subscription_table(subscription_table);
-
-        // Poll UART RX register for sensor state updates
-        if ((USART2->ISR & USART_ISR_RXNE) == USART_ISR_RXNE) {
-            rx_byte = USART2->RDR;
-            my_printf("You've hit the '%c' key\r\n", rx_byte);
-
-            // Update sensor states based on key input
-            switch (rx_byte) {
-                case 'a': sensor_states[0] = 0; BSP_LED_Toggle(); break; // Toggle LED on input
-                case 'b': sensor_states[0] = 1; BSP_LED_Toggle(); break;
-                case 'c': sensor_states[1] = 0; BSP_LED_Toggle(); break;
-                case 'd': sensor_states[1] = 1; BSP_LED_Toggle(); break;
-                default: my_printf("Unknown command: '%c'\r\n", rx_byte); break;
-            }
-        }
-
-        // Display the current sensor states
-        my_printf("Sensors state = [ %d %d ]\r\n", sensor_states[0], sensor_states[1]);
-
-        // Check the subscription table and fulfill requests
-        for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
-            if (subscription_table[i].sem_id != 0) {
-                uint8_t sensor_id = subscription_table[i].sensor_id;
-                uint8_t expected_state = subscription_table[i].sensor_state;
-
-                if (sensor_states[sensor_id - 1] == expected_state) {
-                    my_printf("Publishing: SemID=%d, SensID=%d, State=%d\r\n",
-                              subscription_table[i].sem_id, sensor_id, expected_state);
-
-                    if (subscription_table[i].sem_id == 1) {
-                        xSemaphoreGive(xSem1);
-                    } else if (subscription_table[i].sem_id == 2) {
-                        xSemaphoreGive(xSem2);
-                    }
-
-                    BSP_LED_Toggle(); // Toggle LED when fulfilling a subscription
-
-                    my_printf("Deleting subscription in slot [%d]\r\n", i);
-                    subscription_table[i].sem_id = 0;
-                    subscription_table[i].sensor_id = 0;
-                    subscription_table[i].sensor_state = 0;
-                }
-            }
-        }
+    	if(xQueueReceive(xSubscribeQueue, &msg, portMAX_DELAY)){
+    		updateSubs(subscription_table, &msg);
+    		print_subscription_table(subscription_table);
+    	} else {
+    		my_printf(".");
+    	}
 
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
 
+BaseType_t subscribe(uint8_t sem_id, uint8_t sensor_id, uint8_t sensor_state)
+{
+	subscribe_message_t data = {
+		.sem_id = sem_id,
+		.sensor_id = sensor_id,
+		.sensor_state = sensor_state
+	};
+
+	return xQueueSend(xSubscribeQueue, &data, 0);
+}
+
+
 /*
  * Update the subscription table
  */
 static void updateSubs(subscribe_message_t *subs, subscribe_message_t *new_sub) {
-    int i;
+    size_t i;
+
+    my_printf("Subscribing...");
 
     // Check for duplicates
     for (i = 0; i < MAX_SUBSCRIBERS; i++) {
