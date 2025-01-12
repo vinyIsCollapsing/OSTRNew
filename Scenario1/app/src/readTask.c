@@ -5,16 +5,19 @@
  */
 #include "readTask.h"
 
+extern int my_printf(const char *format, ...);
+
 static xTaskHandle vTaskPub_handle;
 static xQueueHandle xSubscribeQueue;
 xSemaphoreHandle sems[MAX_SEMAPHORE];
 
+static void vTask_Pub(void *pvParameters);
 static void updateSubs(subscribe_message_t *subs, subscribe_message_t *new_sub);
 static void print_subscription_table(subscribe_message_t *subs);
 static void uartSensor(uint8_t *sensors);
 static void publish(subscribe_message_t *subs, uint8_t *sensors);
 
-BaseType_t vTaskPubInit(){
+void vTaskPubInit(){
 	size_t i;
 
 	xSubscribeQueue = xQueueCreate(QUEUE_LENGTH, sizeof(subscribe_message_t));
@@ -25,7 +28,8 @@ BaseType_t vTaskPubInit(){
 
     xTaskCreate(vTask_Pub, "vTask_Pub", 128, NULL, 1, &vTaskPub_handle);
 
-    return pdPASS;
+    my_printf("READ TASK DEFINED\r\n");
+
 }
 
 void vTask_Pub(void *pvParameters) {
@@ -70,10 +74,6 @@ void vTask_Pub(void *pvParameters) {
 
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
-}
-
-void vTaskWrite(void *pvParameters){
-
 }
 
 BaseType_t subscribe(uint8_t sem_id, uint8_t sensor_id, uint8_t sensor_state)

@@ -5,10 +5,6 @@
 
 #include "main.h"
 
-// #define SUBS_LEN 10
-#define COMMAND_MESSAGE_LENGTH 100
-#define WRITE_QUEUE_LENGTH 5
-
 // Static functions
 static void SystemClock_Config(void);
 void vApplicationMallocFailedHook(void);
@@ -17,24 +13,14 @@ void vApplicationMallocFailedHook(void);
 void vTask1(void *pvParameters);
 void vTask2(void *pvParameters);
 
-void vTaskWrite(void *pvParameters);
-
 // FreeRTOS task handles
 xTaskHandle vTask1_handle;
 xTaskHandle vTask2_handle;
 
-xTaskHandle vTaskWrite_handle;
-
 // Kernel objects
 xSemaphoreHandle xSem;
-
-xQueueHandle xWriteQueue;
 xSemaphoreHandle ledMutex;
 
-// Define the command_message_t type as an array of xx char
-typedef uint8_t command_message_t[COMMAND_MESSAGE_LENGTH];
-
-BaseType_t sendMessage(command_message_t *message);
 // Main program
 int main() {
     uint32_t free_heap_size;
@@ -51,8 +37,7 @@ int main() {
     // Start trace recording
     vTraceEnable(TRC_START);
 
-    // Create the subscription queue
-    // xWriteQueue		= xQueueCreate(WRITE_QUEUE_LENGTH, sizeof(command_message_t));
+
 
     // Create semaphore
     xSem = xSemaphoreCreateBinary();
@@ -77,10 +62,10 @@ int main() {
     xTaskCreate(vTask1, "Task_1", 128, NULL, 1, &vTask1_handle);
     xTaskCreate(vTask2, "Task_2", 128, NULL, 1, &vTask2_handle);
 
-    // xTaskCreate(vTaskWrite, "vTask_Write", 128, NULL, 1, &vTaskWrite_handle);
     my_printf("OK\r\n");
 
     vTaskPubInit();
+    writeTaskInit();
 
     // Report free heap size
     free_heap_size = xPortGetFreeHeapSize();
@@ -99,26 +84,12 @@ int main() {
  * Task_1
  */
 void vTask1(void *pvParameters) {
-    while (1) {
-    	subscribe(1,1,0);
-		xSemaphoreTake(sems[1], portMAX_DELAY);
-		xSemaphoreTake(ledMutex, portMAX_DELAY);
-		BSP_LED_On();
-		vTaskDelay(100 / portTICK_PERIOD_MS);
-		BSP_LED_Off();
-		xSemaphoreGive(ledMutex);
+	command_message_t msgTask1;
 
-		subscribe(1, 1, 1);
-		xSemaphoreTake(sems[1], portMAX_DELAY);
-		xSemaphoreTake(ledMutex, portMAX_DELAY);
-		BSP_LED_On();
+	while (1) {
+    	my_sprintf((char *) msgTask1, "message_#1\r\n");
+    	sendMessage(&msgTask1);
 		vTaskDelay(100 / portTICK_PERIOD_MS);
-		BSP_LED_Off();
-		vTaskDelay(200 / portTICK_PERIOD_MS);
-		BSP_LED_On();
-		vTaskDelay(100 / portTICK_PERIOD_MS);
-		BSP_LED_Off();
-		xSemaphoreGive(ledMutex);
     }
 }
 
@@ -126,36 +97,13 @@ void vTask1(void *pvParameters) {
  * Task_2
  */
 void vTask2(void *pvParameters) {
-    while(1){
-		subscribe(2, 2, 0);
-		xSemaphoreTake(sems[2], portMAX_DELAY);
-		xSemaphoreTake(ledMutex, portMAX_DELAY);
-		BSP_LED_On();
-		vTaskDelay(200 / portTICK_PERIOD_MS);
-		BSP_LED_Off();
-		xSemaphoreGive(ledMutex);
+	command_message_t msgTask2;
 
-		subscribe(2, 2, 1);
-		xSemaphoreTake(sems[2], portMAX_DELAY);
-		xSemaphoreTake(ledMutex, portMAX_DELAY);
-		BSP_LED_On();
-		vTaskDelay(200 / portTICK_PERIOD_MS);
-		BSP_LED_Off();
-		vTaskDelay(400 / portTICK_PERIOD_MS);
-		BSP_LED_On();
-		vTaskDelay(200 / portTICK_PERIOD_MS);
-		BSP_LED_Off();
-		xSemaphoreGive(ledMutex);
-
+	while(1){
+    	my_sprintf((char *) msgTask2, "message_#2\r\n");
+    	sendMessage(&msgTask2);
+    	vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-}
-
-/*
- * Task_Pub
- */
-
-BaseType_t sendMessage(command_message_t *message){
-
 }
 
 
@@ -235,3 +183,49 @@ static void SystemClock_Config() {
     // Update SystemCoreClock global variable
     SystemCoreClockUpdate();
 }
+
+/*
+ * TP2: readTask
+subscribe(1,1,0);
+xSemaphoreTake(sems[1], portMAX_DELAY);
+xSemaphoreTake(ledMutex, portMAX_DELAY);
+BSP_LED_On();
+vTaskDelay(100 / portTICK_PERIOD_MS);
+BSP_LED_Off();
+xSemaphoreGive(ledMutex);
+
+subscribe(1, 1, 1);
+xSemaphoreTake(sems[1], portMAX_DELAY);
+xSemaphoreTake(ledMutex, portMAX_DELAY);
+BSP_LED_On();
+vTaskDelay(100 / portTICK_PERIOD_MS);
+BSP_LED_Off();
+vTaskDelay(200 / portTICK_PERIOD_MS);
+BSP_LED_On();
+vTaskDelay(100 / portTICK_PERIOD_MS);
+BSP_LED_Off();
+xSemaphoreGive(ledMutex);
+*/
+
+/*
+ * TP2: readTask
+subscribe(2, 2, 0);
+xSemaphoreTake(sems[2], portMAX_DELAY);
+xSemaphoreTake(ledMutex, portMAX_DELAY);
+BSP_LED_On();
+vTaskDelay(200 / portTICK_PERIOD_MS);
+BSP_LED_Off();
+xSemaphoreGive(ledMutex);
+
+subscribe(2, 2, 1);
+xSemaphoreTake(sems[2], portMAX_DELAY);
+xSemaphoreTake(ledMutex, portMAX_DELAY);
+BSP_LED_On();
+vTaskDelay(200 / portTICK_PERIOD_MS);
+BSP_LED_Off();
+vTaskDelay(400 / portTICK_PERIOD_MS);
+BSP_LED_On();
+vTaskDelay(200 / portTICK_PERIOD_MS);
+BSP_LED_Off();
+xSemaphoreGive(ledMutex);
+*/
