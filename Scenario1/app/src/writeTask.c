@@ -7,8 +7,6 @@
 
 #include "writeTask.h"
 
-extern int my_printf(const char *format, ...);
-
 static void vTaskWrite(void *pvParameters);
 
 static xTaskHandle vTaskWrite_handle;

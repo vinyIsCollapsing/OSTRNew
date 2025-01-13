@@ -37,7 +37,7 @@ int main() {
     // Start trace recording
     vTraceEnable(TRC_START);
 
-
+    myPrintfInit();
 
     // Create semaphore
     xSem = xSemaphoreCreateBinary();
@@ -55,24 +55,24 @@ int main() {
 
     // Report free heap size
     free_heap_size = xPortGetFreeHeapSize();
-    //my_printf("Free Heap Size is %d bytes\r\n", free_heap_size);
+    my_printf("Free Heap Size is %d bytes\r\n", free_heap_size);
 
     // Create tasks
-    //my_printf("Creating Tasks...");
+    my_printf("Creating Tasks...");
     xTaskCreate(vTask1, "Task_1", 128, NULL, 1, &vTask1_handle);
     xTaskCreate(vTask2, "Task_2", 128, NULL, 1, &vTask2_handle);
 
-    //my_printf("OK\r\n");
+    my_printf("OK\r\n");
 
     vTaskPubInit();
     writeTaskInit();
 
     // Report free heap size
     free_heap_size = xPortGetFreeHeapSize();
-    //my_printf("Free Heap Size is %d bytes\r\n", free_heap_size);
+    my_printf("Free Heap Size is %d bytes\r\n", free_heap_size);
 
     // Start the scheduler
-    //my_printf("Now Starting Scheduler...\r\n");
+    my_printf("Now Starting Scheduler...\r\n");
     vTaskStartScheduler();
 
     while (1) {

@@ -180,6 +180,9 @@ void BSP_Console_Init()
 	// Enable both Transmitter and Receiver
 	USART2->CR1 |= USART_CR1_TE | USART_CR1_RE;
 
+	// Enable TX (TC) interrupt
+	USART2->CR1 |= USART_CR1_TCIE;
+
 	// Enable USART2
 	USART2->CR1 |= USART_CR1_UE;
 }
@@ -207,6 +210,12 @@ void BSP_NVIC_Init()
 
 	// Enable EXTI line 4 to 15 (user button on line 13) interrupts
 	NVIC_EnableIRQ(EXTI4_15_IRQn);
+
+	NVIC_SetPriority(USART2_IRQn,
+			configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 1);
+
+	NVIC_EnableIRQ(USART2_IRQn);
+
 }
 
 /*

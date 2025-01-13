@@ -25,8 +25,10 @@
 #include "queue.h"
 #include "event_groups.h"
 
+#include "printf-stdarg.h"
+
 // #define SUBS_LEN 10
-#define COMMAND_MESSAGE_LENGTH 20
+#define COMMAND_MESSAGE_LENGTH 10
 #define WRITE_QUEUE_LENGTH 5
 
 // Define the command_message_t type as an array of xx char

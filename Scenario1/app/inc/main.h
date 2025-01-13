@@ -22,12 +22,10 @@
 #include "event_groups.h"
 #include "stream_buffer.h"
 
+#include "printf-stdarg.h"
 // Tasks headers
 #include "readTask.h"
 #include "writeTask.h"
 
-// Global functions
-int my_printf	(const char *format, ...);
-int my_sprintf	(char *out, const char *format, ...);
 
 #endif /* INC_MAIN_H_ */

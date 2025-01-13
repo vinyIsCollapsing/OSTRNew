@@ -5,8 +5,6 @@
  */
 #include "readTask.h"
 
-extern int my_printf(const char *format, ...);
-
 static xTaskHandle vTaskPub_handle;
 static xQueueHandle xSubscribeQueue;
 xSemaphoreHandle sems[MAX_SEMAPHORE];
@@ -28,7 +26,7 @@ BaseType_t vTaskPubInit(){
 
     xTaskCreate(vTask_Pub, "vTask_Pub", 128, NULL, 1, &vTaskPub_handle);
 
-    //my_printf("READ TASK DEFINED\r\n");
+    my_printf("READ TASK DEFINED\r\n");
 
     return pdPASS;
 

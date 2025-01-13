@@ -30,6 +30,8 @@
 #include "queue.h"
 #include "event_groups.h"
 
+#include "printf-stdarg.h"
+
 typedef struct {
     uint8_t sem_id;        // Semaphore ID to use for publication
     uint8_t sensor_id;     // Awaited sensor ID
@@ -41,8 +43,6 @@ BaseType_t vTaskPubInit();
 BaseType_t subscribe(uint8_t sem_id, uint8_t sensor_id, uint8_t sensor_state);
 
 // Using subscribe_message_t, so this needs to go after declaration
-
-
 
 extern xSemaphoreHandle sems[MAX_SEMAPHORE];
 
