@@ -6,10 +6,12 @@
 #ifndef INC_BSP_H_
 #define INC_BSP_H_
 
+#define TX_DMA_BUFFER_SIZE (100)
+
 #include "stm32f0xx.h"
 #include "FreeRTOSConfig.h"
 
-
+extern uint8_t tx_dma_buffer[TX_DMA_BUFFER_SIZE];
 /*
  * LED driver functions
  */

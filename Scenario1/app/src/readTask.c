@@ -24,7 +24,7 @@ BaseType_t vTaskPubInit(){
 		sems[i] = xSemaphoreCreateBinary();
 	}
 
-    xTaskCreate(vTask_Pub, "vTask_Pub", 128, NULL, 1, &vTaskPub_handle);
+    // xTaskCreate(vTask_Pub, "vTask_Pub", 128, NULL, 1, &vTaskPub_handle);
 
     my_printf("READ TASK DEFINED\r\n");
 

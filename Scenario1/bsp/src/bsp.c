@@ -6,6 +6,8 @@
 
 #include "bsp.h"
 
+uint8_t tx_dma_buffer[TX_DMA_BUFFER_SIZE];
+
 /*
  * BSP_LED_Init()
  * Initialize LED pin (PA5) as a High-Speed Push-Pull output
@@ -183,6 +185,53 @@ void BSP_Console_Init()
 	// Enable TX (TC) interrupt
 	USART2->CR1 |= USART_CR1_TCIE;
 
+	// Setup RX on DMA Channel 5
+	// Setup TX on DMA Channel 4
+
+	// Start DMA clock
+	RCC->AHBENR |= RCC_AHBENR_DMA1EN;
+
+	// Reset DMA1 Channel 4 configuration
+	DMA1_Channel4->CCR = 0x00000000;
+
+	// Set direction Memory -> Peripheral
+	DMA1_Channel4->CCR |= DMA_CCR_DIR;
+
+	// Peripheral is USART2 TDR
+	DMA1_Channel4->CPAR = (uint32_t) &USART2->TDR;
+
+	// Peripheral data size is 8-bit (byte)
+	DMA1_Channel4->CCR |= (0x00 <<DMA_CCR_PSIZE_Pos);
+
+	// Disable auto-increment Peripheral address
+	DMA1_Channel4->CCR &= ~DMA_CCR_PINC;
+
+	// Memory is tx_dma_buffer
+	DMA1_Channel4->CMAR = (uint32_t) tx_dma_buffer;
+
+	// Memory data size is 8-bit (byte)
+	DMA1_Channel4->CCR |= (0x00 <<DMA_CCR_MSIZE_Pos);
+
+	// Enable auto-increment Memory address
+	DMA1_Channel4->CCR |= DMA_CCR_MINC;
+
+	// Set Memory Buffer size
+	DMA1_Channel4->CNDTR = 0;
+
+	// DMA mode is not circular
+	DMA1_Channel4->CCR &= ~DMA_CCR_CIRC;
+
+	// Enable transfer complete interrupt
+	DMA1_Channel4->CCR |= DMA_CCR_TCIE;
+
+	// Enable DMA1 Channel 4
+	//DMA1_Channel4->CCR |= DMA_CCR_EN;
+
+	// Enable USART2 DMA Request on TX
+	USART2->CR3 |= USART_CR3_DMAT;
+
+
+
 	// Enable USART2
 	USART2->CR1 |= USART_CR1_UE;
 }
@@ -211,10 +260,15 @@ void BSP_NVIC_Init()
 	// Enable EXTI line 4 to 15 (user button on line 13) interrupts
 	NVIC_EnableIRQ(EXTI4_15_IRQn);
 
+	/*
 	NVIC_SetPriority(USART2_IRQn,
 			configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 1);
 
 	NVIC_EnableIRQ(USART2_IRQn);
+	*/
+	NVIC_SetPriority(DMA1_Channel4_5_6_7_IRQn,
+					configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 1);
+	NVIC_EnableIRQ(DMA1_Channel4_5_6_7_IRQn);
 
 }
 
