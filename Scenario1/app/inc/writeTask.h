@@ -32,7 +32,7 @@
 // Define the command_message_t type as an array of xx char
 typedef uint8_t command_message_t[COMMAND_MESSAGE_LENGTH];
 
-void writeTaskInit();
+BaseType_t writeTaskInit();
 BaseType_t sendMessage(command_message_t *message);
 
 #endif /* INC_WRITETASK_H_ */

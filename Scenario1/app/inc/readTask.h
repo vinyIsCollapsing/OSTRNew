@@ -37,11 +37,12 @@ typedef struct {
 } subscribe_message_t;
 
 // My functions
+BaseType_t vTaskPubInit();
 BaseType_t subscribe(uint8_t sem_id, uint8_t sensor_id, uint8_t sensor_state);
 
 // Using subscribe_message_t, so this needs to go after declaration
 
-void vTaskPubInit();
+
 
 extern xSemaphoreHandle sems[MAX_SEMAPHORE];
 

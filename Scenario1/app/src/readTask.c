@@ -17,7 +17,7 @@ static void print_subscription_table(subscribe_message_t *subs);
 static void uartSensor(uint8_t *sensors);
 static void publish(subscribe_message_t *subs, uint8_t *sensors);
 
-void vTaskPubInit(){
+BaseType_t vTaskPubInit(){
 	size_t i;
 
 	xSubscribeQueue = xQueueCreate(QUEUE_LENGTH, sizeof(subscribe_message_t));
@@ -28,11 +28,13 @@ void vTaskPubInit(){
 
     xTaskCreate(vTask_Pub, "vTask_Pub", 128, NULL, 1, &vTaskPub_handle);
 
-    my_printf("READ TASK DEFINED\r\n");
+    //my_printf("READ TASK DEFINED\r\n");
+
+    return pdPASS;
 
 }
 
-void vTask_Pub(void *pvParameters) {
+static void vTask_Pub(void *pvParameters) {
     TickType_t xLastWakeTime;
     const TickType_t xFrequency = 200 / portTICK_PERIOD_MS;
 
